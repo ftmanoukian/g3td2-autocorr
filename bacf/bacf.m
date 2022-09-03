@@ -7,7 +7,7 @@ clear, clc;
 % audio_array_rs. Esto es solo para adaptar los datos y no es parte del
 % algoritmo.
 new_fs = 100e3;
-audio_array_rs = resample(audio_array,fs,new_fs);
+audio_array_rs = resample(audio_array,new_fs,fs);
 
 % Simulaci?n de filtrado digital (post-muestreo, pre-procesamiento). 
 % La idea de este filtro es reducir el ancho de banda con un corte
@@ -20,12 +20,17 @@ audio_array_filtered_rs = filter(b,a,audio_array_rs);
 
 % Nueva frecuencia de muestreo (post-filtrado digital)
 low_fs = 10e3;
-audio_array_lowfs = resample(audio_array_filtered_rs,new_fs,low_fs);
+audio_array_lowfs = resample(audio_array_filtered_rs,low_fs,new_fs);
+
+%figure(2);
+%subplot(311),plot(audio_array);
+%subplot(312),plot(audio_array_filtered_rs);
+%subplot(313),plot(audio_array_lowfs);
 
 % Como import? el archivo entero, rescato s?lo una fracci?n f?cilmente
 % visible en un plot (esto no pasa adentro del micro).
-import_disp = 1e3;
-subgroup_audio_array = audio_array_lowfs(import_disp:import_disp+2e4);
+import_disp = 1;
+subgroup_audio_array = audio_array_lowfs(import_disp:import_disp+3e3);
 
 % Cruces por cero - creo un vector booleano que almacena 1 si la se?al est?
 % por encima de "-bias", y 0 si est? por debajo. En el micro, este paso y
@@ -45,6 +50,7 @@ bias = 0.1;
 %zerocross_bool = zero_cross_biased(subgroup_audio_array,bias);
 zerocross_bool = zero_cross_hyst(subgroup_audio_array,bias);
 
+figure(1);
 subplot(311), plot(subgroup_audio_array), axis tight, title('Audio');
 subplot(312), stem(zerocross_bool), axis tight, title('Cruces por cero');
 
@@ -73,9 +79,11 @@ end
 % deja de superponerse consigo misma. Por este motivo, deben existir datos
 % que abarquen un ancho de dos ventanas (por lo menos). O, en su defecto,
 % la ventana no puede ser mayor que la mitad del total de los datos.
-windowlen = 8e3;
+windowlen = 512;
 vars_in_window = floor(windowlen/32);
 bacvec = uint32(zeros(windowlen, 1));
+
+disp(['Tiempo de retardo m?nimo: ' num2str(2000*windowlen/low_fs) 'ms']);
 
 % Itero para cada desplazamiento (cada ?ndice si se quiere)
 for sample_shift = 1:windowlen
