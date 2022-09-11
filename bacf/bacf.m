@@ -1,6 +1,11 @@
 clear, clc;
 
-[audio_array,fs] = audioread('pianoa2_mono.wav');
+[audio_array,fs] = audioread('eb_section2.wav');
+%fs = 44100;
+%t = 0:1/fs:2;
+%audio_array = sin(2*pi*t*100);
+%plot(t,audio_array);
+audio_array = audio_array/max(audio_array); 
 
 % El archivo de audio est? muestreado a frecuencia "fs". Como vamos a
 % trabajar muestreando a frecuencia "new_fs", se resamplea audio_array a
@@ -29,7 +34,7 @@ audio_array_lowfs = resample(audio_array_filtered_rs,low_fs,new_fs);
 
 % Como import? el archivo entero, rescato s?lo una fracci?n f?cilmente
 % visible en un plot (esto no pasa adentro del micro).
-import_disp = 1;
+import_disp = 2e3;
 subgroup_audio_array = audio_array_lowfs(import_disp:import_disp+3e3);
 
 % Cruces por cero - creo un vector booleano que almacena 1 si la se?al est?
@@ -90,7 +95,7 @@ for sample_shift = 1:windowlen
     % Como s?lo puedo operar con 32 bits por vez, opero con la cantidad de
     % palabras necesarias para completar una ventana (tama?o_ventana/32)
     for displace = 1:vars_in_window
-        idx = ceil(sample_shift/32);
+        idx = ceil(sample_shift/32) - 1;
         bit_shift = mod(sample_shift-1,32);
 
         % var1 tiene el set de datos sin desplazar
@@ -104,6 +109,23 @@ for sample_shift = 1:windowlen
         bacvec(sample_shift) = bacvec(sample_shift) + sum(bitget(bitxor(var1,var2),1:32));
     end
 end
+
+mins = 0;
+for sample_idx = 5:windowlen-1
+    prev_sample = bacvec(sample_idx - 1);
+    curr_sample = bacvec(sample_idx);
+    next_sample = bacvec(sample_idx + 1);
+    if(curr_sample < prev_sample && curr_sample <= next_sample)
+        mins(end+1) = sample_idx;
+    end
+end
+
+mins
+k = 2:length(mins);
+mins2 = mins(k)./(k-1);
+mean(mins2);
+est_freq = low_fs/mean(mins2);
+disp(['Frecuencia estimada: ' num2str(est_freq) ' Hz'])
 
 % Relleno el vector de resultado con ceros para poder graficarlo jutno con
 % los de audio y cruces por cero
